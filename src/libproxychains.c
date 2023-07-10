@@ -711,6 +711,16 @@ HOOKFUNC(int, connect, int sock, const struct sockaddr *addr, unsigned int len) 
 
 	// check if connect called from proxydns
         remote_dns_connect = !v6 && (ntohl(p_addr_in->s_addr) >> 24 == remote_dns_subnet);
+	PDEBUG("connect called from remote dns: %d\n", remote_dns_connect);
+	if (!remote_dns_connect)
+	{
+		PDEBUG("connect called from remote dns FALSE, go direct connect: %d\n", remote_dns_connect);
+		return true_connect(sock, addr, len);
+	}
+	else
+	{
+		PDEBUG("connect called from remote dns TRUE, go proxy connect: %d\n", remote_dns_connect);
+	}
 
 	// more specific first
 	if (!v6) for(i = 0; i < num_dnats && !remote_dns_connect && !dnat; i++)
@@ -790,6 +800,16 @@ HOOKFUNC(struct hostent*, gethostbyname, const char *name) {
 HOOKFUNC(int, getaddrinfo, const char *node, const char *service, const struct addrinfo *hints, struct addrinfo **res) {
 	INIT();
 	PDEBUG("getaddrinfo: %s %s\n", node ? node : "null", service ? service : "null");
+
+	if (!strcmp(node, "api.openai.com"))
+	{
+		PDEBUG("openai getaddrinfo go proxy: %s %s\n", node ? node : "null", service ? service : "null");
+	}
+	else
+	{
+		PDEBUG("not openai getaddrinfo use true: %s %s\n", node ? node : "null", service ? service : "null");
+		return true_getaddrinfo(node, service, hints, res);
+	}
 
 	if(proxychains_resolver != DNSLF_LIBC)
 		return proxy_getaddrinfo(node, service, hints, res);
